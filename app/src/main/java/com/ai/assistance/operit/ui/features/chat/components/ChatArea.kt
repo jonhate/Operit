@@ -88,6 +88,7 @@ import com.ai.assistance.operit.data.model.AiReference
 import com.ai.assistance.operit.data.model.ChatMessage
 import com.ai.assistance.operit.data.model.ChatMessageDisplayMode
 import com.ai.assistance.operit.data.model.ChatMessageLocatorPreview
+import com.ai.assistance.operit.data.stats.MessagePricingResolver
 
 import androidx.compose.ui.window.PopupProperties
 
@@ -1446,6 +1447,34 @@ private fun MessageFooterBar(
     val hasPrevious = message.selectedVariantIndex > 0
     val hasNext = message.selectedVariantIndex < message.variantCount - 1
     val context = LocalContext.current
+    var messageCostLabel by remember(
+        message.provider,
+        message.modelName,
+        message.inputTokens,
+        message.cachedInputTokens,
+        message.outputTokens,
+    ) { mutableStateOf<String?>(null) }
+    LaunchedEffect(
+        message.provider,
+        message.modelName,
+        message.inputTokens,
+        message.cachedInputTokens,
+        message.outputTokens,
+    ) {
+        messageCostLabel =
+            if (message.sender == "ai") {
+                MessagePricingResolver.costLabel(
+                    context = context,
+                    provider = message.provider,
+                    model = message.modelName,
+                    inputTokens = message.inputTokens,
+                    cachedInputTokens = message.cachedInputTokens,
+                    outputTokens = message.outputTokens,
+                )
+            } else {
+                null
+            }
+    }
     val tokenSummary =
         remember(message.inputTokens, message.cachedInputTokens, message.outputTokens) {
             val totalTokens = message.inputTokens + message.outputTokens
@@ -1546,6 +1575,13 @@ private fun MessageFooterBar(
         if (showMessageTokenStats && hasDisplayableTokenStats(message)) {
             Text(
                 text = tokenSummary,
+                style = MaterialTheme.typography.labelSmall,
+                color = statsTextColor,
+            )
+        }
+        if (showMessageTokenStats && messageCostLabel != null) {
+            Text(
+                text = messageCostLabel.orEmpty(),
                 style = MaterialTheme.typography.labelSmall,
                 color = statsTextColor,
             )
